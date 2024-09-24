@@ -28,7 +28,7 @@ class Node:
                     node.add(new)
                     return
 
-        node = Node(new.last_changed, parts[0], True)
+        node = Node(new.last_changed, parts[0], new.is_dir)
         self.nodes.append(node)
         if len(parts) == 1:
             return
