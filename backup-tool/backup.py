@@ -18,6 +18,7 @@ class Node:
         self.is_dir: bool = is_dir
     
     def add(self, new: "Node"):
+        new.name = new.name.removeprefix(self.name + "/")
         parts = new.name.split("/")
 
         if len(parts) > 1:
@@ -74,11 +75,12 @@ class Tree:
         for a, dirs, files in os.walk(folder_dir):
             for dir in dirs:
                 path = os.path.join(a, dir)
-                self.root.add(Node(os.path.getmtime(path), dir, True))
+
+                self.root.add(Node(os.path.getmtime(path), path, True))
 
             for file in files:
                 path = os.path.join(a, file)
-                self.root.add(Node(os.path.getmtime(path), file))
+                self.root.add(Node(os.path.getmtime(path), path))
             
     
     def diffs(self, old_tree: type["Tree"] | None) -> list[Change]:
@@ -131,9 +133,11 @@ class Backup:
         self.tree: Tree = new
         self.changes = changes 
     
-    def dump(self):
-        with open(str(datetime.datetime.now().strftime("%Y%m%d%H%M%S")), 'wb') as file:
+    def dump(self) -> str:
+        time = str(datetime.datetime.now().strftime("%Y%m%d%H%M%S"))
+        with open(time, 'wb') as file:
             pickle.dump(self, file)
+        return time
 
     @staticmethod
     def load_from_file(file: str):
