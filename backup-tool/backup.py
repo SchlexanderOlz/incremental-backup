@@ -61,8 +61,9 @@ class Node:
 
             if node.is_dir:
                 path = node.path_to(new)
+                print("{} at {}".format(node.name, path))
                 if path:
-                    return self.name + "/" + path
+                    return node.name + "/" + path
         return None
 
 
@@ -110,6 +111,12 @@ class Tree:
                 elif os.path.isdir(full_path):
                     changes.append(Change(ChangeType.CREATED, node))
                     print(f"Directory {path} has been created")
+                else:
+                    with open(full_path, "rb") as file:
+                        data = file.read()
+                    changes.append(Change(ChangeType.CREATED, node, data=data))
+                    print(f"File {path} has been created")
+                    pass
 
         if old_tree is None:
             return changes
@@ -167,15 +174,15 @@ class Backup:
             print(change.node.name)
             path = self.tree.root.path_to(change.node)
             if change.change_type == ChangeType.CREATED:
+                os.makedirs(os.path.dirname(os.path.join(destination, path)), exist_ok=True)
                 if change.node.is_dir:
-                    os.makedirs(os.path.join(destination, path), exist_ok=True)
                     continue
 
                 with open(os.path.join(destination, path), "wb") as file:
                     file.write(change.data)
             elif change.change_type == ChangeType.MODIFIED:
+                os.makedirs(os.path.dirname(os.path.join(destination, path)), exist_ok=True)
                 if change.node.is_dir:
-                    os.makedirs(os.path.join(destination, path), exist_ok=True)
                     continue
 
                 with open(os.path.join(destination, path), "wb") as file:
