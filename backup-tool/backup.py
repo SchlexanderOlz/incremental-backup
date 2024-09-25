@@ -1,6 +1,7 @@
 import os
 import datetime
 import pickle
+import functools
 from enum import Enum
 
 class ChangeType(Enum):
@@ -32,10 +33,16 @@ class Node:
         node = Node(new.last_changed, parts[0], new.is_dir)
         self.nodes.append(node)
         if len(parts) == 1:
+            print("Added node: {} at {}".format(node.name, self.name))
             return
 
         new.name = "/".join(parts[1:])
         node.add(new)
+    
+    def all(self) -> list["Node"]:
+        nodes = [node for sublist in self.nodes for node in sublist.all()]
+        nodes.extend(self.nodes)
+        return nodes
 
     def get(self, name: str) -> type["Node"] | None:
         for node in self.nodes:
@@ -85,7 +92,7 @@ class Tree:
     
     def diffs(self, old_tree: type["Tree"] | None) -> list[Change]:
         changes = []
-        for i, node in enumerate(self.root.nodes):
+        for i, node in enumerate(self.root.all()):
             path = self.root.path_to(node)
             try:
                 found: Node | None = old_tree.root.get(path)
@@ -106,7 +113,7 @@ class Tree:
 
         if old_tree is None:
             return changes
-        for _, old in enumerate(old_tree.root.nodes, start=i):
+        for _, old in enumerate(old_tree.root.all(), start=i):
             path = old_tree.root.path_to(old)
             found: Node | None = self.root.get(path)
             if not found:
@@ -140,9 +147,13 @@ class Backup:
         return time
 
     @staticmethod
-    def load_from_file(file: str):
+    def load_from_file(file: str, old: Tree | None = None):
         with open(file, 'rb') as file:
             backup = pickle.load(file)
+
+        if old is not None:
+            changes = backup.tree.diffs(old)
+            backup.changes = changes
         return backup
     
     def restore(self, destination: str):
