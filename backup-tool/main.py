@@ -14,9 +14,13 @@ def restore():
     restore = backup.Restorer(["20240925103228", "20240925103330", "20240925113036"])
     restore.restore("out")
 
-   
+
 
 if __name__ == "__main__":
+    create()
+    print("")
+    print("")
+    print("CREATED BACKUP")
+    print("")
+    print("")
     restore()
-
-

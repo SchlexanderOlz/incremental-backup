@@ -12,12 +12,12 @@ class ChangeType(Enum):
 
 class Node:
     def __init__(self, last_changed: int, name: str, is_dir: bool = False):
-        self.nodes: list[Node] = [] 
+        self.nodes: list[Node] = []
 
         self.last_changed: int = last_changed
         self.name: str = name
         self.is_dir: bool = is_dir
-    
+
     def add(self, new: "Node"):
         new.name = new.name.removeprefix(self.name + "/")
         parts = new.name.split("/")
@@ -53,7 +53,7 @@ class Node:
                 else:
                     return node.get("/".join(name_split[1:]))
         return None
-    
+
     def path_to(self, new: type["Node"]) -> str | None:
         for node in self.nodes:
             if node == new:
@@ -64,7 +64,7 @@ class Node:
                 if path:
                     return self.name + "/" + path
         return None
-        
+
 
 class Change:
     def __init__(self, change_type: int, node: Node, data: bytes | None = None):
@@ -88,8 +88,8 @@ class Tree:
             for file in files:
                 path = os.path.join(a, file)
                 self.root.add(Node(os.path.getmtime(path), path))
-            
-    
+
+
     def diffs(self, old_tree: type["Tree"] | None) -> list[Change]:
         changes = []
         for i, node in enumerate(self.root.all()):
@@ -122,7 +122,7 @@ class Tree:
                 continue
 
             if found.last_changed != old.last_changed:
-                if found.is_dir: 
+                if found.is_dir:
                     data = None
                 else:
                     with open(os.path.join(self.root.name, path), "rb") as file:
@@ -138,8 +138,8 @@ class Backup:
         changes = new.diffs(old)
 
         self.tree: Tree = new
-        self.changes = changes 
-    
+        self.changes = changes
+
     def dump(self) -> str:
         time = str(datetime.datetime.now().strftime("%Y%m%d%H%M%S"))
         with open(time, 'wb') as file:
@@ -155,7 +155,7 @@ class Backup:
             changes = backup.tree.diffs(old)
             backup.changes = changes
         return backup
-    
+
     def restore(self, destination: str):
         for change in self.changes:
             print(change.node.name)
@@ -187,7 +187,7 @@ class Backup:
 
 class Restorer:
     def __init__(self, files: list[str]):
-        self.files = files 
+        self.files = files
 
         for file in files:
             if not os.path.exists(file):
@@ -200,7 +200,7 @@ class Restorer:
         basename = os.path.basename(filename)
         datetime_str = basename.split('.')[0]
         return int(datetime_str)
- 
+
     def restore(self, destination: str):
         for backup in self.backups:
             backup.restore(destination)
