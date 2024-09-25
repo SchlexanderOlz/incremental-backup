@@ -1,6 +1,5 @@
-import { Bar } from 'react-chartjs-2'
 import { Chart as ChartJS, CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend } from 'chart.js'
-import { HardDrive, Settings, Loader2, History, Play } from 'lucide-react'
+import { HardDrive, Settings, History, Play } from 'lucide-react'
 import { formatDistance } from 'date-fns'
 import { de } from 'date-fns/locale'
 
@@ -41,10 +40,7 @@ export default function Dashboard() {
     lastBackup: Date,
     usedStorage: number,
     maxStorage: number,
-    backups: { name: string, date: Date, size: number }[],
-    dailySizes: {
-      [key: string]: number
-    }
+    backups: { name: string, date: Date, size: number }[]
   }
 
   const [backupProgress, setBackupProgress] = useState(0)
@@ -57,16 +53,7 @@ export default function Dashboard() {
     backups: [ // Backup List
       { name: "Backup-01", date: new Date(2024, 8, 24, 8), size: 37218927 },
       { name: "Backup-02", date: new Date(2024, 8, 23, 10), size: 94891 }
-    ],
-    dailySizes: { // More Statistics
-      'Mon': 0,
-      'Tue': 0,
-      'Wed': 0,
-      'Thu': 0,
-      'Fri': 0,
-      'Sat': 0,
-      'Sun': 0,
-    }
+    ]
   })
 
   const startBackup = () => {
@@ -78,14 +65,15 @@ export default function Dashboard() {
     if (isBackupRunning && backupProgress < 100) {
       const timer = setTimeout(() => {
         setBackupProgress(prevProgress => {
-          const newProgress = prevProgress + 10
+          const newProgress = prevProgress + 1
+          setdata({ ...data, usedStorage: data.usedStorage += 238329.12 })
           if (newProgress >= 100) {
             setIsBackupRunning(false)
             return 100
           }
           return newProgress
         })
-      }, 1000)
+      }, 25)
       return () => clearTimeout(timer)
     }
   }, [isBackupRunning, backupProgress])
@@ -93,30 +81,6 @@ export default function Dashboard() {
   useEffect(() => {
     refreshStatus()
   }, [])
-
-  const chartData = {
-    labels: Object.keys(data.dailySizes),
-    datasets: [
-      {
-        label: 'Backup Size (GB)',
-        data: Object.values(data.dailySizes),
-        backgroundColor: 'rgba(59, 130, 246, 0.5)',
-      },
-    ],
-  }
-
-  const chartOptions = {
-    responsive: true,
-    plugins: {
-      legend: {
-        position: 'top' as const,
-      },
-      title: {
-        display: true,
-        text: 'Backup Sizes Over Time',
-      },
-    },
-  }
 
   return (
     <div className="flex h-screen bg-gray-100">
@@ -175,14 +139,18 @@ export default function Dashboard() {
                   <HardDrive className="h-4 w-4 text-muted-foreground" />
                 </CardHeader>
                 <CardContent>
-                  <div className="text-2xl font-bold">{data.lastBackup.toLocaleDateString("de-DE", { hour: "numeric", minute: "numeric" })}</div>
+                  <div className="text-2xl font-bold">
+                    {data.lastBackup.getDay() == new Date().getDay()
+                      ? data.lastBackup.toLocaleDateString("de-DE", { hour: "numeric", minute: "numeric" }).slice(-5)
+                      : data.lastBackup.toLocaleDateString("de-DE", { hour: "numeric", minute: "numeric" })}
+                  </div>
                 </CardContent>
               </Card>
             </div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+            <div className="flex flex-col lg:flex-row items-stretch justify-center gap-6 mb-8">
               {/* New Backup Action Section */}
-              <Card className="mb-8">
+              <Card className="flex-1">
                 <CardHeader>
                   <CardTitle>Start New Backup</CardTitle>
                 </CardHeader>
@@ -197,7 +165,7 @@ export default function Dashboard() {
                       <span>Start Backup</span>
                     </Button>
                     <div className="flex-1">
-                      <Progress value={backupProgress} className="w-full" />
+                      <Progress value={backupProgress} className={`w-full`} />
                     </div>
                     <div className="w-16 text-right">{backupProgress}%</div>
                   </div>
@@ -210,7 +178,7 @@ export default function Dashboard() {
                 </CardContent>
               </Card>
 
-              <Card>
+              <Card className='flex-1'>
                 <CardHeader>
                   <CardTitle>Recent Backups</CardTitle>
                 </CardHeader>
@@ -226,15 +194,6 @@ export default function Dashboard() {
                     ))}
 
                   </ul>
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardHeader>
-                  <CardTitle>Backup Sizes</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <Bar data={chartData} options={chartOptions} />
                 </CardContent>
               </Card>
             </div>
