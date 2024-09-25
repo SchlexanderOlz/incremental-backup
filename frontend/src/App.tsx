@@ -1,6 +1,6 @@
 import { Bar } from 'react-chartjs-2'
 import { Chart as ChartJS, CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend } from 'chart.js'
-import { HardDrive, Settings, Loader2, History } from 'lucide-react'
+import { HardDrive, Settings, Loader2, History, Play } from 'lucide-react'
 import { formatDistance } from 'date-fns'
 import { de } from 'date-fns/locale'
 
@@ -17,14 +17,6 @@ function humanFileSize(size: number) {
 }
 
 export default function Dashboard() {
-  const [backupRunning, setbackupRunning] = useState(false)
-
-  async function startBackup() {
-    setbackupRunning(true)
-    await refreshStatus()
-    setbackupRunning(false)
-  }
-
   async function refreshStatus() {
     // Call API to get status and set new state
     // setdata(newData)
@@ -55,6 +47,8 @@ export default function Dashboard() {
     }
   }
 
+  const [backupProgress, setBackupProgress] = useState(0)
+  const [isBackupRunning, setIsBackupRunning] = useState(false)
   const [data, setdata] = useState<Data>({
     healthy: undefined, // Boolean
     lastBackup: new Date(), // Datetime Object
@@ -74,6 +68,27 @@ export default function Dashboard() {
       'Sun': 0,
     }
   })
+
+  const startBackup = () => {
+    setIsBackupRunning(true)
+    setBackupProgress(0)
+  }
+
+  useEffect(() => {
+    if (isBackupRunning && backupProgress < 100) {
+      const timer = setTimeout(() => {
+        setBackupProgress(prevProgress => {
+          const newProgress = prevProgress + 10
+          if (newProgress >= 100) {
+            setIsBackupRunning(false)
+            return 100
+          }
+          return newProgress
+        })
+      }, 1000)
+      return () => clearTimeout(timer)
+    }
+  }, [isBackupRunning, backupProgress])
 
   useEffect(() => {
     refreshStatus()
@@ -161,15 +176,40 @@ export default function Dashboard() {
                 </CardHeader>
                 <CardContent>
                   <div className="text-2xl font-bold">{data.lastBackup.toLocaleDateString("de-DE", { hour: "numeric", minute: "numeric" })}</div>
-                  <Button disabled={backupRunning} onClick={startBackup}>
-                    {backupRunning && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                    Start Backup
-                  </Button>
                 </CardContent>
               </Card>
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+              {/* New Backup Action Section */}
+              <Card className="mb-8">
+                <CardHeader>
+                  <CardTitle>Start New Backup</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="flex items-center space-x-4">
+                    <Button
+                      onClick={startBackup}
+                      disabled={isBackupRunning}
+                      className="flex items-center space-x-2"
+                    >
+                      <Play className="h-4 w-4" />
+                      <span>Start Backup</span>
+                    </Button>
+                    <div className="flex-1">
+                      <Progress value={backupProgress} className="w-full" />
+                    </div>
+                    <div className="w-16 text-right">{backupProgress}%</div>
+                  </div>
+                  {isBackupRunning && (
+                    <p className="mt-2 text-sm text-muted-foreground">Backup in progress...</p>
+                  )}
+                  {!isBackupRunning && backupProgress === 100 && (
+                    <p className="mt-2 text-sm text-green-600">Backup completed successfully!</p>
+                  )}
+                </CardContent>
+              </Card>
+
               <Card>
                 <CardHeader>
                   <CardTitle>Recent Backups</CardTitle>
