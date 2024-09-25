@@ -1,11 +1,13 @@
 import { Bar } from 'react-chartjs-2'
 import { Chart as ChartJS, CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend } from 'chart.js'
-import { HardDrive, Settings } from 'lucide-react'
+import { HardDrive, Settings, Loader2, History } from 'lucide-react'
 import { formatDistance } from 'date-fns'
 import { de } from 'date-fns/locale'
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Progress } from "@/components/ui/progress"
+import { Button } from './components/ui/button'
+import { useEffect, useState } from 'react'
 
 ChartJS.register(CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend)
 
@@ -15,14 +17,52 @@ function humanFileSize(size: number) {
 }
 
 export default function Dashboard() {
-  // This is the data coming from API
-  const data = {
+  const [backupRunning, setbackupRunning] = useState(false)
+
+  async function startBackup() {
+    setbackupRunning(true)
+    await refreshStatus()
+    setbackupRunning(false)
+  }
+
+  async function refreshStatus() {
+    // Call API to get status and set new state
+    // setdata(newData)
+    console.log("Refreshing status")
+    try {
+      const ftch = await fetch("https://sos.com/api/status")
+      if (!ftch.ok) {
+        console.error("Failed to fetch status")
+        setdata({ ...data, healthy: false })
+      }
+    }
+    catch (e) {
+      console.error("Failed to fetch status")
+      setdata({ ...data, healthy: false })
+      return
+    }
+
+  }
+
+  type Data = {
+    healthy: boolean | undefined,
+    lastBackup: Date,
+    usedStorage: number,
+    maxStorage: number,
+    backups: { name: string, date: Date, size: number }[],
+    dailySizes: {
+      [key: string]: number
+    }
+  }
+
+  const [data, setdata] = useState<Data>({
+    healthy: undefined, // Boolean
     lastBackup: new Date(), // Datetime Object
     usedStorage: 0, // Size used in Bytes
     maxStorage: 100000000, // Max size in Bytes
     backups: [ // Backup List
-      { name: "Backup-01", date: new Date(2024, 8, 24, 8) },
-      { name: "Backup-02", date: new Date(2024, 8, 23, 10) }
+      { name: "Backup-01", date: new Date(2024, 8, 24, 8), size: 37218927 },
+      { name: "Backup-02", date: new Date(2024, 8, 23, 10), size: 94891 }
     ],
     dailySizes: { // More Statistics
       'Mon': 0,
@@ -33,7 +73,11 @@ export default function Dashboard() {
       'Sat': 0,
       'Sun': 0,
     }
-  }
+  })
+
+  useEffect(() => {
+    refreshStatus()
+  }, [])
 
   const chartData = {
     labels: Object.keys(data.dailySizes),
@@ -78,11 +122,15 @@ export default function Dashboard() {
               <Card>
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                   <CardTitle className="text-sm font-medium">System Status</CardTitle>
-                  <Settings className="h-4 w-4 text-muted-foreground" />
                 </CardHeader>
                 <CardContent>
-                  <div className="text-2xl font-bold text-green-600">Healthy</div>
-                  <p className="text-xs text-muted-foreground">All systems operational</p>
+                  {data.healthy === true && <div className="text-2xl font-bold text-green-600">Healthy</div>}
+                  {data.healthy === false && <div className="text-2xl font-bold text-red-600">Unhealthy</div>}
+                  {data.healthy === undefined && <div className="text-2xl font-bold text-gray-600">-</div>}
+                  <p className="text-xs text-muted-foreground">
+                    {data.healthy === true && "All systems operational"}
+                    {data.healthy === false && "Leitner is not running"}
+                  </p>
                 </CardContent>
               </Card>
               <Card>
@@ -113,6 +161,10 @@ export default function Dashboard() {
                 </CardHeader>
                 <CardContent>
                   <div className="text-2xl font-bold">{data.lastBackup.toLocaleDateString("de-DE", { hour: "numeric", minute: "numeric" })}</div>
+                  <Button disabled={backupRunning} onClick={startBackup}>
+                    {backupRunning && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                    Start Backup
+                  </Button>
                 </CardContent>
               </Card>
             </div>
@@ -126,8 +178,10 @@ export default function Dashboard() {
                   <ul className="space-y-2">
                     {data.backups.map((backup, idx) => (
                       <li key={idx} className="flex justify-between items-center">
-                        <span>{backup.name}</span>
-                        <span className="text-sm text-gray-500">{formatDistance(backup.date, Date.now(), { locale: de, includeSeconds: true })}</span>
+                        <span className="font-semibold">{backup.name}</span>
+                        <span>{humanFileSize(backup.size)}</span>
+                        <span className="text-sm text-gray-500">vor {formatDistance(backup.date, Date.now(), { locale: de, includeSeconds: true })}</span>
+                        <Button variant={"link"}><History /></Button>
                       </li>
                     ))}
 
