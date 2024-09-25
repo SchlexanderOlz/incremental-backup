@@ -1,23 +1,46 @@
-import { useState } from 'react'
 import { Bar } from 'react-chartjs-2'
 import { Chart as ChartJS, CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend } from 'chart.js'
-import { Bell, HardDrive, Menu, Settings, User } from 'lucide-react'
+import { HardDrive, Settings } from 'lucide-react'
+import { formatDistance } from 'date-fns'
+import { de } from 'date-fns/locale'
 
-import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Progress } from "@/components/ui/progress"
 
 ChartJS.register(CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend)
 
+function humanFileSize(size: number) {
+  var i = size == 0 ? 0 : Math.floor(Math.log(size) / Math.log(1024));
+  return +((size / Math.pow(1024, i)).toFixed(2)) * 1 + ' ' + ['B', 'KB', 'MB', 'GB', 'TB'][i];
+}
+
 export default function Dashboard() {
-  const [sidebarOpen, setSidebarOpen] = useState(false)
+  // This is the data coming from API
+  const data = {
+    lastBackup: new Date(), // Datetime Object
+    usedStorage: 0, // Size used in Bytes
+    maxStorage: 100000000, // Max size in Bytes
+    backups: [ // Backup List
+      { name: "Backup-01", date: new Date(2024, 8, 24, 8) },
+      { name: "Backup-02", date: new Date(2024, 8, 23, 10) }
+    ],
+    dailySizes: { // More Statistics
+      'Mon': 0,
+      'Tue': 0,
+      'Wed': 0,
+      'Thu': 0,
+      'Fri': 0,
+      'Sat': 0,
+      'Sun': 0,
+    }
+  }
 
   const chartData = {
-    labels: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
+    labels: Object.keys(data.dailySizes),
     datasets: [
       {
         label: 'Backup Size (GB)',
-        data: [2, 5, 3, 4, 6, 2, 1],
+        data: Object.values(data.dailySizes),
         backgroundColor: 'rgba(59, 130, 246, 0.5)',
       },
     ],
@@ -38,16 +61,6 @@ export default function Dashboard() {
 
   return (
     <div className="flex h-screen bg-gray-100">
-      {/* Sidebar */}
-      <aside className={`bg-white w-64 min-h-screen p-4 ${sidebarOpen ? '' : 'hidden'} md:block`}>
-        <nav>
-          <ul className="space-y-2">
-            <li><a href="#" className="block py-2 px-4 text-gray-700 hover:bg-gray-200 rounded">Dashboard</a></li>
-            <li><a href="#" className="block py-2 px-4 text-gray-700 hover:bg-gray-200 rounded">Backups</a></li>
-            <li><a href="#" className="block py-2 px-4 text-gray-700 hover:bg-gray-200 rounded">Settings</a></li>
-          </ul>
-        </nav>
-      </aside>
 
       {/* Main Content */}
       <div className="flex-1 flex flex-col overflow-hidden">
@@ -55,17 +68,6 @@ export default function Dashboard() {
         <header className="bg-white shadow-sm z-10">
           <div className="max-w-7xl mx-auto py-4 px-4 sm:px-6 lg:px-8 flex justify-between items-center">
             <h1 className="text-2xl font-semibold text-gray-900">Incrementify</h1>
-            <div className="flex items-center">
-              <Button variant="ghost" size="icon" className="mr-2">
-                <Bell className="h-5 w-5" />
-              </Button>
-              <Button variant="ghost" size="icon" className="mr-2">
-                <User className="h-5 w-5" />
-              </Button>
-              <Button variant="ghost" size="icon" className="md:hidden" onClick={() => setSidebarOpen(!sidebarOpen)}>
-                <Menu className="h-5 w-5" />
-              </Button>
-            </div>
           </div>
         </header>
 
@@ -73,37 +75,6 @@ export default function Dashboard() {
         <main className="flex-1 overflow-x-hidden overflow-y-auto bg-gray-100">
           <div className="container mx-auto px-6 py-8">
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-              <Card>
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">Total Backups</CardTitle>
-                  <HardDrive className="h-4 w-4 text-muted-foreground" />
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold">254</div>
-                  <p className="text-xs text-muted-foreground">+12 from last week</p>
-                </CardContent>
-              </Card>
-              <Card>
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">Storage Used</CardTitle>
-                  <Settings className="h-4 w-4 text-muted-foreground" />
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold">1.2 TB</div>
-                  <p className="text-xs text-muted-foreground">of 2 TB</p>
-                  <Progress value={60} className="mt-2" />
-                </CardContent>
-              </Card>
-              <Card>
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">Last Backup</CardTitle>
-                  <HardDrive className="h-4 w-4 text-muted-foreground" />
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold">2 hours ago</div>
-                  <p className="text-xs text-muted-foreground">Next backup in 4 hours</p>
-                </CardContent>
-              </Card>
               <Card>
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                   <CardTitle className="text-sm font-medium">System Status</CardTitle>
@@ -114,40 +85,62 @@ export default function Dashboard() {
                   <p className="text-xs text-muted-foreground">All systems operational</p>
                 </CardContent>
               </Card>
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">Storage Used</CardTitle>
+                  <Settings className="h-4 w-4 text-muted-foreground" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold">{humanFileSize(data.usedStorage)}</div>
+                  <p className="text-xs text-muted-foreground">of {humanFileSize(data.maxStorage)}</p>
+                  <Progress value={(data.usedStorage / data.maxStorage) * 100} className="mt-2" />
+                </CardContent>
+              </Card>
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">Total Backups</CardTitle>
+                  <HardDrive className="h-4 w-4 text-muted-foreground" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold">0</div>
+                  <p className="text-xs text-muted-foreground">+0 today</p>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">Last Backup</CardTitle>
+                  <HardDrive className="h-4 w-4 text-muted-foreground" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold">{data.lastBackup.toLocaleDateString("de-DE", { hour: "numeric", minute: "numeric" })}</div>
+                </CardContent>
+              </Card>
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Backup Sizes</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <Bar data={chartData} options={chartOptions} />
-                </CardContent>
-              </Card>
               <Card>
                 <CardHeader>
                   <CardTitle>Recent Backups</CardTitle>
                 </CardHeader>
                 <CardContent>
                   <ul className="space-y-2">
-                    <li className="flex justify-between items-center">
-                      <span>Project A</span>
-                      <span className="text-sm text-gray-500">2 hours ago</span>
-                    </li>
-                    <li className="flex justify-between items-center">
-                      <span>Project B</span>
-                      <span className="text-sm text-gray-500">5 hours ago</span>
-                    </li>
-                    <li className="flex justify-between items-center">
-                      <span>Project C</span>
-                      <span className="text-sm text-gray-500">1 day ago</span>
-                    </li>
-                    <li className="flex justify-between items-center">
-                      <span>Project D</span>
-                      <span className="text-sm text-gray-500">2 days ago</span>
-                    </li>
+                    {data.backups.map((backup, idx) => (
+                      <li key={idx} className="flex justify-between items-center">
+                        <span>{backup.name}</span>
+                        <span className="text-sm text-gray-500">{formatDistance(backup.date, Date.now(), { locale: de, includeSeconds: true })}</span>
+                      </li>
+                    ))}
+
                   </ul>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader>
+                  <CardTitle>Backup Sizes</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <Bar data={chartData} options={chartOptions} />
                 </CardContent>
               </Card>
             </div>
